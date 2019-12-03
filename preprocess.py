@@ -1,3 +1,4 @@
+import numpy as np
 from sklearn.preprocessing import LabelEncoder
 
 
@@ -8,6 +9,11 @@ def area_encode(_train, _test):
     _train["area"] = area_encoder.transform(_train["area"])
     _test["area"] = area_encoder.transform(_test["area"])
     return _train, _test
+
+
+def age_clip(df):
+    # replace (60 <= value) -> 60
+    return np.clip(df['age'], 0, 60)
 
 
 def get_area_code(df):
