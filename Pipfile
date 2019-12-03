@@ -8,6 +8,7 @@ lightgbm = "==2.3.1"
 scikit-learn = "*"
 pandas = "*"
 category-encoders = "==2.1.0"
+optuna = "*"
 
 [dev-packages]
 
