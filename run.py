@@ -3,6 +3,7 @@ from pathlib import Path
 import category_encoders as ce
 import lightgbm as lgb
 import numpy as np
+import optuna.integration.lightgbm as optuna_lgb
 import pandas as pd
 from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import KFold
@@ -36,6 +37,58 @@ def lgb_cv(_train, _test, _target, model_params, train_params, cat_idx,
                           valid_sets=[trn_data, val_data],
                           # categorical_feature=cat_idx,
                           **train_params)
+        oof[val_idx] = model.predict(_train.iloc[val_idx],
+                                     num_iteration=model.best_iteration)
+        print(mean_absolute_error(np.expm1(_target.iloc[val_idx]),
+                                  np.expm1(oof[val_idx])))
+        predictions += model.predict(_test,
+                                     num_iteration=model.best_iteration) / fold_schema.n_splits
+    print(mean_absolute_error(np.expm1(_target), np.expm1(oof)))
+
+    return predictions
+
+
+def lgb_cv_tune(_train, _test, _target, model_params, train_params, cat_idx,
+                fold_schema):
+    oof = np.zeros(len(_train))
+    predictions = np.zeros(len(_test))
+
+    for fold_idx, (trn_idx, val_idx) in enumerate(fold_schema.split(_train)):
+        print('Fold {}/{}'.format(fold_idx + 1, fold_schema.n_splits))
+        trn_data = lgb.Dataset(_train.iloc[trn_idx],
+                               label=_target.iloc[trn_idx])
+        val_data = lgb.Dataset(_train.iloc[val_idx],
+                               label=_target.iloc[val_idx])
+
+        # LightGBMTuner
+        # Reference:
+        # https://gist.github.com/smly/367c53e855cdaeea35736f32876b7416
+        best_params = {}
+        tuning_history = []
+
+        optuna_lgb.train(
+            model_params,
+            trn_data,
+            num_boost_round=10000,
+            valid_sets=[trn_data, val_data],
+            best_params=best_params,
+            tuning_history=tuning_history,
+            **train_params)
+
+        pd.DataFrame(tuning_history).to_csv(
+            dataset_path / 'tuning_history_{}.csv'.format(fold_idx + 1))
+
+        best_params['learning_rate'] = 0.05
+
+        # origin LightGBM Model
+        model = lgb.train(
+            best_params,
+            trn_data,
+            num_boost_round=20000,
+            valid_names=['train', 'valid'],
+            valid_sets=[trn_data, val_data],
+            **train_params)
+
         oof[val_idx] = model.predict(_train.iloc[val_idx],
                                      num_iteration=model.best_iteration)
         print(mean_absolute_error(np.expm1(_target.iloc[val_idx]),
