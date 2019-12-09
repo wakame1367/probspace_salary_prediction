@@ -57,6 +57,10 @@ def main():
     train.drop(columns=[target_col], inplace=True)
     train["commute_multi_position"] = train["commute"] * train["position"]
     test["commute_multi_position"] = test["commute"] * test["position"]
+    train["age_multi_position"] = train["age"] * train["position"]
+    test["age_multi_position"] = test["age"] * test["position"]
+    train["age_multi_commute"] = train["age"] * train["commute"]
+    test["age_multi_commute"] = test["age"] * test["commute"]
     train["is_test"] = 0
     test["is_test"] = 1
     data = pd.concat([train, test])
