@@ -34,7 +34,7 @@ def lgb_cv(_train, _test, _target, model_params, train_params, cat_idx,
                           trn_data,
                           valid_names=['train', 'valid'],
                           valid_sets=[trn_data, val_data],
-                          categorical_feature=cat_idx,
+                          # categorical_feature=cat_idx,
                           **train_params)
         oof[val_idx] = model.predict(_train.iloc[val_idx],
                                      num_iteration=model.best_iteration)
@@ -62,6 +62,12 @@ def main():
     #
     # data['city'] = data['area'].apply(
     #     lambda x: 1 if '東京' in x or '大阪' in x else 0)
+
+    # area_encode = LabelEncoder()
+    # area_encode.fit(
+    #     list(set(train["area"].unique()) & set(test["area"].unique())))
+    # train["area"] = area_encode.transform(train["area"])
+    # test["area"] = area_encode.transform(test["area"])
     area_encoder = LabelEncoder()
     area_encoder.fit(data["area"])
     data["area"] = area_encoder.transform(data["area"])
@@ -72,7 +78,6 @@ def main():
 
     n_splits = 4
     kf = KFold(n_splits=n_splits, random_state=71, shuffle=True)
-
     model_params = {
         'boosting_type': 'gbdt',
         'objective': 'fair',
@@ -94,20 +99,22 @@ def main():
 
     # id is wasted col
     drop_cols = ["id", "service_length"]
-
     data.drop(columns=drop_cols, inplace=True)
+    # train.drop(columns=drop_cols, inplace=True)
+    # test.drop(columns=drop_cols, inplace=True)
 
     cat_features_cols = ["position", "area", "sex", "partner", "education"]
     cat_features_idx = [idx for idx, col in enumerate(train.columns) if
                         col in cat_features_cols]
+
     cat_boost_enc = ce.CatBoostEncoder(cols=cat_features_cols)
-    ord_enc = ce.OrdinalEncoder(cols=cat_features_cols)
-    count_enc = ce.CountEncoder(cols=cat_features_cols)
-    # data[cat_features_cols] = ord_enc.fit_transform(data[cat_features_cols])
-    # data[cat_features_cols] = count_enc.fit_transform(data[cat_features_cols])
 
     train = data[data["is_test"] == 0]
     test = data[data["is_test"] == 1]
+    cat_boost_enc.fit(train, target)
+    train = cat_boost_enc.transform(train)
+    test = cat_boost_enc.transform(test)
+
     train.drop(columns=["is_test"], inplace=True)
     test.drop(columns=["is_test"], inplace=True)
 
