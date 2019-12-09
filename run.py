@@ -55,7 +55,8 @@ def main():
     target = train[target_col]
     target = target.map(np.log1p)
     train.drop(columns=[target_col], inplace=True)
-
+    train["commute_multi_position"] = train["commute"] * train["position"]
+    test["commute_multi_position"] = test["commute"] * test["position"]
     train["is_test"] = 0
     test["is_test"] = 1
     data = pd.concat([train, test])
